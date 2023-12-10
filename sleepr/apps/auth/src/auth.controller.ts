@@ -1,44 +1,39 @@
-import {
-  Body,
-  Controller,
-  Delete,
-  Get,
-  Param,
-  Patch,
-  Post,
-} from '@nestjs/common';
+import { Controller, Post, Res, UseGuards } from '@nestjs/common';
+import { MessagePattern, Payload } from '@nestjs/microservices';
+import { Response } from 'express';
 import { AuthService } from './auth.service';
+import { JwtAuthGuard } from './guards/jwt-auth.guard';
+import { LocalAuthGuard } from './guards/local-auth.guard';
+import { UserDocument } from './users/models/users.schema';
+import { CurrentUser } from '@app/common';
 
-@Controller()
+@Controller('auth')
 export class AuthController {
   constructor(private readonly authService: AuthService) {}
 
-  // @Post()
-  // async create(@Body() createReservationDto: CreateReservationDto) {
-  //   return this.authService.create(createReservationDto);
-  // }
+  @UseGuards(LocalAuthGuard)
+  @Post('login')
+  async login(
+    @CurrentUser() user: UserDocument,
+    @Res({ passthrough: true }) response: Response,
+  ) {
+    const jwt = await this.authService.login(user, response);
+    response.send(jwt);
+  }
 
-  // @Get()
-  // async findAll() {
-  //   return this.authService.findAll();
-  // }
+  @UseGuards(JwtAuthGuard)
+  @Post()
+  async getUser(
+    @CurrentUser() user: UserDocument,
+    @Res({ passthrough: true }) response: Response,
+  ) {
+    response.send(user);
+  }
 
-  // @Get(':id')
-  // async findOne(@Param('id') id: string) {
-  //   console.log('id: ' + id);
-  //   return this.authService.findOne(id);
-  // }
-
-  // @Patch(':id')
-  // async update(
-  //   @Param('id') id: string,
-  //   @Body() updateReservationDto: UpdateReservationDto,
-  // ) {
-  //   return this.authService.update(id, updateReservationDto);
-  // }
-
-  // @Delete(':id')
-  // async remove(@Param('id') id: string) {
-  //   return this.authService.remove(id);
-  // }
+  @UseGuards(JwtAuthGuard)
+  @MessagePattern('authenticate')
+  async authenticate(@CurrentUser() user: UserDocument, @Payload() data: any) {
+    console.log('Current user: ' + data.user);
+    return user;
+  }
 }
